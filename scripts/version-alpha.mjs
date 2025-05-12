@@ -1,12 +1,12 @@
-import { readdir, readFile, writeFile, stat } from "node:fs/promises";
-import path from "node:path";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { exec } from "node:child_process"
+import { readFile, readdir, stat, writeFile } from "node:fs/promises"
+import path from "node:path"
+import { promisify } from "node:util"
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec)
 
-const changesetDir = ".changeset";
-const packagesDir = "v-next";
+const changesetDir = ".changeset"
+const packagesDir = "packages"
 
 /**
  * This script applies changesets and creates a new Alpha version,
@@ -34,22 +34,20 @@ const packagesDir = "v-next";
  * branch.
  */
 async function versionAlpha() {
-  const changesets = await readAllNewChangsets();
+	const changesets = await readAllNewChangsets()
 
-  validateChangesets(changesets);
+	validateChangesets(changesets)
 
-  const currentHardhatAlphaVersion = await readCurrentHardhatAlphaVersion();
-  const nextHardhatAlphaVersion = incrementHardhatAlphaVersion(
-    currentHardhatAlphaVersion
-  );
+	const currentHardhatAlphaVersion = await readCurrentHardhatAlphaVersion()
+	const nextHardhatAlphaVersion = incrementHardhatAlphaVersion(currentHardhatAlphaVersion)
 
-  await createAllPackageChangesetFor(nextHardhatAlphaVersion);
+	await createAllPackageChangesetFor(nextHardhatAlphaVersion)
 
-  await executeChangesetVersion();
+	await executeChangesetVersion()
 
-  await updateHardhatChangelog(nextHardhatAlphaVersion, changesets);
+	await updateHardhatChangelog(nextHardhatAlphaVersion, changesets)
 
-  printFollowupInstructions(nextHardhatAlphaVersion, changesets);
+	printFollowupInstructions(nextHardhatAlphaVersion, changesets)
 }
 
 /**
@@ -57,37 +55,37 @@ async function versionAlpha() {
  * based on the pre.json file.
  */
 async function readAllNewChangsets() {
-  const allChangesetNames = (await readdir(changesetDir))
-    .filter((file) => file.endsWith(".md"))
-    .map((file) => file.slice(0, -3));
+	const allChangesetNames = (await readdir(changesetDir))
+		.filter((file) => file.endsWith(".md"))
+		.map((file) => file.slice(0, -3))
 
-  const alreadyAppliedChangesetNames = JSON.parse(
-    await readFile(path.join(changesetDir, "pre.json"))
-  );
+	const alreadyAppliedChangesetNames = JSON.parse(
+		await readFile(path.join(changesetDir, "pre.json")),
+	)
 
-  const newChangesetNames = allChangesetNames.filter(
-    (name) => !alreadyAppliedChangesetNames.changesets.includes(name)
-  );
+	const newChangesetNames = allChangesetNames.filter(
+		(name) => !alreadyAppliedChangesetNames.changesets.includes(name),
+	)
 
-  const changesets = [];
+	const changesets = []
 
-  for (const newChangeSetName of newChangesetNames) {
-    const changesetFilePath = path.join(changesetDir, `${newChangeSetName}.md`);
+	for (const newChangeSetName of newChangesetNames) {
+		const changesetFilePath = path.join(changesetDir, `${newChangeSetName}.md`)
 
-    const changesetContent = await readFile(changesetFilePath, "utf-8");
+		const changesetContent = await readFile(changesetFilePath, "utf-8")
 
-    const { content, frontMatter } = parseFrontMatter(changesetContent);
-    const commitHash = await getAddingCommit(changesetFilePath);
+		const { content, frontMatter } = parseFrontMatter(changesetContent)
+		const commitHash = await getAddingCommit(changesetFilePath)
 
-    changesets.push({
-      frontMatter,
-      content,
-      path: changesetFilePath,
-      commitHash,
-    });
-  }
+		changesets.push({
+			frontMatter,
+			content,
+			path: changesetFilePath,
+			commitHash,
+		})
+	}
 
-  return changesets;
+	return changesets
 }
 
 /**
@@ -99,43 +97,41 @@ async function readAllNewChangsets() {
  * - no major or minor changesets are allowed
  */
 function validateChangesets(changesets) {
-  if (changesets.length === 0) {
-    console.log("Error: No new changesets found.");
-    process.exit(1);
-  }
+	if (changesets.length === 0) {
+		console.log("Error: No new changesets found.")
+		process.exit(1)
+	}
 
-  let validationFailed = false;
+	let validationFailed = false
 
-  for (const { frontMatter, path: changesetPath } of changesets) {
-    if (!/^\s*"hardhat": patch$/m.test(frontMatter)) {
-      validationFailed = true;
-      console.log(
-        `Error: ${changesetPath}: No "hardhat: patch", every Alpha changeset must include hardhat`
-      );
-    }
+	for (const { frontMatter, path: changesetPath } of changesets) {
+		if (!/^\s*"hardhat": patch$/m.test(frontMatter)) {
+			validationFailed = true
+			console.log(
+				`Error: ${changesetPath}: No "hardhat: patch", every Alpha changeset must include hardhat`,
+			)
+		}
 
-    if (/: (major|minor)\s*$/m.test(frontMatter)) {
-      validationFailed = true;
-      console.log(
-        `Error: ${changesetPath}: No "major" or "minor" changesets are allowed in Alpha`
-      );
-    }
-  }
+		if (/: (major|minor)\s*$/m.test(frontMatter)) {
+			validationFailed = true
+			console.log(`Error: ${changesetPath}: No "major" or "minor" changesets are allowed in Alpha`)
+		}
+	}
 
-  if (validationFailed) {
-    process.exit(1);
-  }
+	if (validationFailed) {
+		process.exit(1)
+	}
 }
 
 /**
  * Read the current Alpha version based on the hardhat package.json
  */
 async function readCurrentHardhatAlphaVersion() {
-  const hardhatPackageJson = JSON.parse(
-    await readFile(path.join("v-next", "hardhat", "package.json"))
-  );
+	const hardhatPackageJson = JSON.parse(
+		await readFile(path.join("packages", "hardhat", "package.json")),
+	)
 
-  return hardhatPackageJson.version;
+	return hardhatPackageJson.version
 }
 
 /**
@@ -143,43 +139,40 @@ async function readCurrentHardhatAlphaVersion() {
  * tag is always used.
  */
 function incrementHardhatAlphaVersion(version) {
-  const match = version.match(/(\d+\.\d+\.\d+)-next\.(\d+)/);
+	const match = version.match(/(\d+\.\d+\.\d+)-next\.(\d+)/)
 
-  if (!match) {
-    console.log(`Unsupported version format: ${version}`);
-    process.exit(1);
-  }
+	if (!match) {
+		console.log(`Unsupported version format: ${version}`)
+		process.exit(1)
+	}
 
-  const [, base, num] = match;
-  const nextNum = Number(num) + 1;
+	const [, base, num] = match
+	const nextNum = Number(num) + 1
 
-  return `${base}-next.${nextNum}`;
+	return `${base}-next.${nextNum}`
 }
 
 /**
  * Write a changeset file that has one entry for every package
- * under `./v-next` excluding the hardhat package (this is
+ * under `./packages` excluding the hardhat package (this is
  * covered definitionally because of the validation rules).
  */
 async function createAllPackageChangesetFor(nextHardhatAlphaVersion) {
-  const releaseChangesetPath = path.join(
-    changesetDir,
-    `release-${nextHardhatAlphaVersion}.md`
-  );
+	const releaseChangesetPath = path.join(changesetDir, `release-${nextHardhatAlphaVersion}.md`)
 
-  const packageNames = await readAllPackageNames();
+	const packageNames = await readAllPackageNames()
 
-  const releaseChangesetContent = `---
+	const releaseChangesetContent = `---
 ${packageNames
-  .filter((name) => name !== "hardhat" && name !== "@nomicfoundation/config")
-  .map((name) => `"${name}": patch`)
-  .join("\n")}
+	.filter((name) => name !== "hardhat" && name !== "@nomicfoundation/config")
+	.map((name) => `"${name}": patch`)
+	.join("\n")}
 ---
 
 Hardhat 3 Alpha release (${new Date().toISOString()})
-`;
+`
 
-  await writeFile(releaseChangesetPath, releaseChangesetContent);
+	await writeFile(releaseChangesetPath, releaseChangesetContent)
 }
 
 /**
@@ -187,8 +180,8 @@ Hardhat 3 Alpha release (${new Date().toISOString()})
  * then update the pnpm lock file based on those changes.
  */
 async function executeChangesetVersion() {
-  await execAsync("pnpm changeset version");
-  await execAsync("pnpm install");
+	await execAsync("pnpm changeset version")
+	await execAsync("pnpm install")
 }
 
 /**
@@ -196,84 +189,74 @@ async function executeChangesetVersion() {
  * changelog based on the new changesets.
  */
 async function updateHardhatChangelog(nextHardhatAlphaVersion, changesets) {
-  const newChangelogSection = generateChangelogFrom(
-    nextHardhatAlphaVersion,
-    changesets
-  );
+	const newChangelogSection = generateChangelogFrom(nextHardhatAlphaVersion, changesets)
 
-  const hardhatChangelogPath = path.join(
-    packagesDir,
-    "hardhat",
-    "CHANGELOG.md"
-  );
+	const hardhatChangelogPath = path.join(packagesDir, "hardhat", "CHANGELOG.md")
 
-  const currentChangelog = await readFile(hardhatChangelogPath, "utf-8");
+	const currentChangelog = await readFile(hardhatChangelogPath, "utf-8")
 
-  const newChangelog = currentChangelog.replace(
-    "# hardhat\n",
-    newChangelogSection
-  );
+	const newChangelog = currentChangelog.replace("# hardhat\n", newChangelogSection)
 
-  await writeFile(hardhatChangelogPath, newChangelog);
+	await writeFile(hardhatChangelogPath, newChangelog)
 }
 
 function printFollowupInstructions(nextHardhatAlphaVersion, changesets) {
-  console.log(`
+	console.log(`
 
 # ${nextHardhatAlphaVersion}
 
 ${generateReleaseMessage(changesets)}
-`);
+`)
 }
 
 async function readAllPackageNames() {
-  const ignoredChangesetPackages = JSON.parse(
-    await readFile(path.join(changesetDir, "config.json"))
-  ).ignore;
+	const ignoredChangesetPackages = JSON.parse(
+		await readFile(path.join(changesetDir, "config.json")),
+	).ignore
 
-  const subdirs = await readdir(packagesDir);
+	const subdirs = await readdir(packagesDir)
 
-  const packageNames = [];
+	const packageNames = []
 
-  for (const dir of subdirs) {
-    const packageJsonPath = path.join(packagesDir, dir, "package.json");
+	for (const dir of subdirs) {
+		const packageJsonPath = path.join(packagesDir, dir, "package.json")
 
-    try {
-      const stats = await stat(packageJsonPath);
+		try {
+			const stats = await stat(packageJsonPath)
 
-      if (!stats.isFile()) {
-        continue;
-      }
+			if (!stats.isFile()) {
+				continue
+			}
 
-      const pkgJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
+			const pkgJson = JSON.parse(await readFile(packageJsonPath, "utf8"))
 
-      if (ignoredChangesetPackages.includes(pkgJson.name)) {
-        continue;
-      }
+			if (ignoredChangesetPackages.includes(pkgJson.name)) {
+				continue
+			}
 
-      packageNames.push(pkgJson.name);
-    } catch (error) {
-      console.log(error);
-      process.exit(1);
-    }
-  }
+			packageNames.push(pkgJson.name)
+		} catch (error) {
+			console.log(error)
+			process.exit(1)
+		}
+	}
 
-  return packageNames.sort();
+	return packageNames.sort()
 }
 
 function generateChangelogFrom(nextHardhatAlphaVersion, changesets) {
-  return `# hardhat
+	return `# hardhat
 
 ## ${nextHardhatAlphaVersion}
 
 ### Patch Changes
 
 ${generateChangesTextFrom(changesets)}
-`;
+`
 }
 
 function generateReleaseMessage(changesets) {
-  return `This Hardhat 3 Alpha release [short summary of the changes].
+	return `This Hardhat 3 Alpha release [short summary of the changes].
 
 ### Changes
 
@@ -282,47 +265,42 @@ ${generateChangesTextFrom(changesets)}
 ---
 > 💡 **The Nomic Foundation is hiring! Check [our open positions](https://www.nomic.foundation/jobs).**
 ---
-`;
+`
 }
 
 function generateChangesTextFrom(changesets) {
-  return changesets
-    .map(({ content, commitHash }) =>
-      content
-        .trim()
-        .split("\n")
-        .map(
-          (entry) =>
-            `- ${
-              commitHash !== null ? `${commitHash.slice(0, 7)}: ` : ""
-            }${entry}`
-        )
-        .join("\n")
-    )
-    .join("\n");
+	return changesets
+		.map(({ content, commitHash }) =>
+			content
+				.trim()
+				.split("\n")
+				.map((entry) => `- ${commitHash !== null ? `${commitHash.slice(0, 7)}: ` : ""}${entry}`)
+				.join("\n"),
+		)
+		.join("\n")
 }
 
 function parseFrontMatter(markdown) {
-  const match = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  if (!match) {
-    return { frontMatter: null, content: markdown };
-  }
+	const match = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+	if (!match) {
+		return { frontMatter: null, content: markdown }
+	}
 
-  return {
-    frontMatter: match[1],
-    content: match[2],
-  };
+	return {
+		frontMatter: match[1],
+		content: match[2],
+	}
 }
 
 async function getAddingCommit(filePath) {
-  try {
-    const { stdout } = await execAsync(
-      `git log --diff-filter=A --follow --format=%h -- "${filePath}"`
-    );
-    return stdout.trim() || null;
-  } catch {
-    return null;
-  }
+	try {
+		const { stdout } = await execAsync(
+			`git log --diff-filter=A --follow --format=%h -- "${filePath}"`,
+		)
+		return stdout.trim() || null
+	} catch {
+		return null
+	}
 }
 
-await versionAlpha();
+await versionAlpha()

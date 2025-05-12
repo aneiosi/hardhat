@@ -1,17 +1,17 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@1.6.0/schema.json",
-  "changelog": false,
-  "commit": false,
-  "linked": [],
-  "access": "public",
-  "baseBranch": "v-next",
-  "updateInternalDependencies": "patch",
-  "ignore": [
-    "@nomicfoundation/example-project",
-    "@nomicfoundation/template-package",
-    "template-*"
-  ],
-  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
-    "onlyUpdatePeerDependentsWhenOutOfRange": true
-  }
+	"$schema": "https://unpkg.com/@changesets/config@1.6.0/schema.json",
+	"changelog": false,
+	"commit": false,
+	"linked": [],
+	"access": "public",
+	"baseBranch": "packages",
+	"updateInternalDependencies": "patch",
+	"ignore": [
+		"@nomicfoundation/example-project",
+		"@nomicfoundation/template-package",
+		"template-*"
+	],
+	"___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+		"onlyUpdatePeerDependentsWhenOutOfRange": true
+	}
 }

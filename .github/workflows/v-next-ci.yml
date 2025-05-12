@@ -4,7 +4,7 @@ on:
   merge_group:
   push:
     branches:
-      - v-next
+      - packages
   pull_request:
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  is-v-next:
+  is-packages:
     runs-on: ubuntu-latest
     outputs:
       is_v_next: ${{ steps.check.outputs.folder_exists }}
@@ -22,10 +22,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check if the folder v-next exists
+      - name: Check if the folder packages exists
         id: check
         run: |
-          if [ -d "./v-next" ]; then
+          if [ -d "./packages" ]; then
             echo "folder_exists=true" >> $GITHUB_OUTPUT
           else
             echo "folder_exists=false" >> $GITHUB_OUTPUT
@@ -33,8 +33,8 @@ jobs:
 
   check_dependencies:
     name: Check dependency versions
-    needs: is-v-next
-    if: ${{ needs.is-v-next.outputs.is_v_next == 'true' }}
+    needs: is-packages
+    if: ${{ needs.is-packages.outputs.is_v_next == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,12 +42,12 @@ jobs:
         with:
           node-version: 24
       - name: Run check
-        run: node scripts/check-v-next-dependencies.js
+        run: node scripts/check-packages-dependencies.js
 
   check_npm_scripts:
     name: Check that the npm scripts are consistent
-    needs: is-v-next
-    if: ${{ needs.is-v-next.outputs.is_v_next == 'true' }}
+    needs: is-packages
+    if: ${{ needs.is-packages.outputs.is_v_next == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,16 +55,16 @@ jobs:
         with:
           node-version: 24
       - name: Run check
-        run: node scripts/check-v-next-npm-scripts.js
+        run: node scripts/check-packages-npm-scripts.js
 
   list-packages:
     name: List packages
-    needs: is-v-next
-    if: ${{ needs.is-v-next.outputs.is_v_next == 'true' }}
+    needs: is-packages
+    if: ${{ needs.is-packages.outputs.is_v_next == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.filter.outputs.changes }}
-      should_bundle: ${{ contains(steps.filter.outputs.hardhat_files, '.github/workflows/v-next-ci.yml') || contains(steps.filter.outputs.hardhat_files, 'pnpm-lock.yaml') }}
+      should_bundle: ${{ contains(steps.filter.outputs.hardhat_files, '.github/workflows/packages-ci.yml') || contains(steps.filter.outputs.hardhat_files, 'pnpm-lock.yaml') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -77,18 +77,18 @@ jobs:
             [
               ".",
               "packages/",
-              "v-next/hardhat/templates/"
+              "packages/hardhat/templates/"
             ]
           COMMON_FILTERS: |
             [
-              ".github/workflows/v-next-ci.yml",
-              "config-v-next/**",
+              ".github/workflows/packages-ci.yml",
+              "config-packages/**",
               "pnpm-lock.yaml"
             ]
         run: |
           echo "filters<<EOF" >> $GITHUB_OUTPUT
           node scripts/generate-filters.js |
-            yq -Po yaml 'with_entries(.key |= sub("^v-next/", ""))' |
+            yq -Po yaml 'with_entries(.key |= sub("^packages/", ""))' |
             tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - id: filter
@@ -96,7 +96,7 @@ jobs:
         with:
           list-files: json
           filters: ${{ steps.generate.outputs.filters }}
-          base: v-next # TODO: Remove once v-next becomes the default branch
+          base: packages # TODO: Remove once packages becomes the default branch
 
   bundle:
     # Depending on list-packages only to check whether pnpm-lock.yaml has changed
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: v-next/${{ matrix.package }}
+        working-directory: packages/${{ matrix.package }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
@@ -133,7 +133,7 @@ jobs:
         with:
           name: ${{ matrix.package }}
           path: |
-            v-next/${{ matrix.package }}/bundle
+            packages/${{ matrix.package }}/bundle
 
   bundle-aggregate:
     needs: bundle
@@ -200,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: v-next/${{ matrix.package }}
+        working-directory: packages/${{ matrix.package }}
 
     steps:
       - uses: actions/checkout@v4
@@ -247,7 +247,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: v-next/${{ matrix.package }}
+        working-directory: packages/${{ matrix.package }}
 
     steps:
       - uses: actions/checkout@v4

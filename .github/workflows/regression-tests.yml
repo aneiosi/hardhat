@@ -7,7 +7,7 @@ on:
       hardhat-ref:
         required: true
         type: string
-        default: 'v-next'
+        default: 'packages'
       edr-ref:
         required: false
         type: string
@@ -139,7 +139,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: v-next/hardhat
+        working-directory: packages/hardhat
     steps:
       - uses: actions/checkout@v4
         with:
@@ -154,7 +154,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: edr
-          path: v-next/hardhat
+          path: packages/hardhat
       - name: Install EDR
         if: inputs.edr-ref != ''
         run: pnpm install ./*.tgz
